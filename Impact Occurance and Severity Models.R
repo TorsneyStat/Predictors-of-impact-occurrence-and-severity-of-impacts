@@ -1,9 +1,29 @@
 setwd ("C:/Users/AndrewT/OneDrive - CAAS (Environmental Services) Ltd/Desktop/AndyPhD/PhD_Data_R/WAW")
 ##calls and runs the full script
 source("WAW_DataCleaning17_19.R")
-
-
+##install.packages("parallel")
+##install.packages("optimx")
+##install.packages("afex")
+##install.packages("dfoptim")
+##install.packages("blme")
+library(sp)
+library(raster)
+library(dfoptim)
+library(afex)
+library(optimx)
+library(parallel)
+library(lme4)
+library(Matrix)
 library(tidyr)
+library(HDInterval)
+library(mcmcOutput)
+library(wiqid)
+library(blme)
+library(sjPlot)
+library(sjlabelled)
+library(sjmisc)
+library(ggplot2)
+
 VOS <- readOGR(dsn ="C://Users//AndrewT//OneDrive - CAAS (Environmental Services) Ltd//Desktop//AndyPhD//PhD_Data_R//WAW//Visitor Movement")
 plot(VOS)
 VOS_Data <- data.frame(VOS)
@@ -11,7 +31,6 @@ modeldata_VOS <- merge(modeldata, VOS_Data, by.x = "Visitor.Unique.ID", by.y = "
 modeldata_VOS <- as.data.frame(modeldata_VOS)
 format(modeldata_VOS)
 modeldata_VOS$Year <- modeldata_VOS$Year.y
-
 
 hist1 <- hist(modeldata_VOS$Prop.Imp.HM)
 hist2 <- hist(modeldata_VOS$ObservableImpacts)
@@ -31,13 +50,11 @@ modeldata_VOS$Group.Type <- as.factor(modeldata_VOS$Group.Type)
 summary(modeldata_VOS$Group.Type)
 nlevels(modeldata_VOS$Group.Type)
 
-
 table(modeldata_VOS$Site.Type, modeldata_VOS$ObservableImpacts)
 table(modeldata_VOS$Group.Type, modeldata_VOS$ObservableImpacts)
 table(modeldata_VOS$Group.Type, modeldata_VOS$Site.Type)
 
 table(modeldata_VOS$Group.Type)
-
 
 table(modeldata_VOS$Year, modeldata_VOS$Site.Type)
 table(modeldata_VOS$Site.Type, modeldata_VOS$Year)
@@ -48,11 +65,8 @@ ggplot(modeldata_VOS, aes(x=Site.Type, y=ImpSeverity)) +
   geom_boxplot()+
   geom_jitter(position=position_jitter(0.2))
 
-
 table(modeldata_VOS$Site.Type, modeldata_VOS$highsImps)
 table(modeldata_VOS$Site.Type, modeldata_VOS$highsImps)
-
-
 
 ## Looking at which varibles still contain NAs
 list <- c()
@@ -60,7 +74,6 @@ for (i in names(modeldata_VOS)){
   list[i] <-length(which(is.na(modeldata_VOS[,i])))
 }
 print(list) ## all variables should be zero 
-
 
 ##Quick look at model dataframe
 ##Factors
@@ -84,15 +97,9 @@ for (i in cont_vars){
   modeldata_VOS[, i] <- c(scale(modeldata_VOS[,i]))
 }
 
-
 #############################Maximal model
-##install.packages("blme")
-library(blme)
-
-library(ggplot2)
 ggplot(data = modeldata_VOS, aes(x = Group.Type, y = ObservableImpacts)) +
   geom_point()
-
 
 modeldata_VOS$Site.Type <- relevel(modeldata_VOS$Site.Type, ref = "Built Infrastructure")
 
@@ -106,25 +113,12 @@ modsBINOMIAL$max <- glmer(ObservableImpacts ~ Group.Type + Group.Size + totalAct
                           family = binomial,  control = glmerControl(optimizer = c("bobyqa"), optCtrl = list(maxfun = 2e4)), 
                           data=modeldata_VOS)
 
-
 model <- glmer(ObservableImpacts ~ Group.Type + Mode.of.Transport + Group.Size + totalActivities +
                  prop.Act.HM + Site.Type + totalActivities:prop.Act.HM +
                  Group.Size:prop.Act.HM + Group.Size:totalActivities + (1 | Site.Name:Year) + (1 | Year),
                family = binomial,
                data=modeldata_VOS)
 
-library(sp)
-library(raster)
-##install.packages("dfoptim")
-library(dfoptim)
-##install.packages("afex")
-library(afex)
-##install.packages("optimx")
-library(optimx)
-##install.packages("parallel")
-library(parallel)
-library(lme4)
-library(Matrix)
 diff_optims <- allFit(model, maxfun = 1e5, parallel = 'multicore', ncpus = detectCores())
 is.OK <- sapply(diff_optims, is, "merMod")
 diff_optims.OK <- diff_optims[is.OK]
@@ -158,11 +152,9 @@ modsBINOMIAL$actualBESTequivelant <- glmer(ObservableImpacts ~ Group.Type + Grou
                                            family = binomial,  control = glmerControl(optimizer = c("bobyqa"), optCtrl = list(maxfun = 2e4)), 
                                            data=modeldata_VOS)
 
-
 #get.models(dredge(modsBINOMIAL$max), subset=TRUE)
 AICc <- sapply(modsBINOMIAL, AICc)
 AICtable(AICc)
-
 
 ##totalimpacts*prop.Act.HM
 quantile(modeldata_VOS$prop.Act.HM, probs = c(.25, .5, .75))
@@ -177,15 +169,11 @@ plot_model(modsBINOMIAL$actualBESTequivelant, type = "pred", terms = c("totalAct
 modsBINOMIAL$actualBEST <- glmer(ObservableImpacts ~ Group.Size + Group.Type + Site.Type + totalActivities + prop.Act.HM + totalActivities:prop.Act.HM + Group.Size:totalActivities + (1 | Site.Name), family = binomial,  control = glmerControl(optimizer = c("bobyqa"), optCtrl = list(maxfun = 2e4)), data=modeldata_VOS)
 #modsBINOMIAL$actualBESTequivelant <- glmer(ObservableImpacts ~ Group.Size + Group.Type + Site.Type + totalActivities + prop.Act.HM + totalActivities:prop.Act.HM + (1 | Site.Name) + (1 | Year), family = binomial,  control = glmerControl(optimizer = c("bobyqa"), optCtrl = list(maxfun = 2e4)), nAGQ = 10, data=modeldata_VOS)
 
-
 AICc <- sapply(modsBINOMIAL, AICc)
 AICtable(AICc)
 logLik(modsBINOMIAL$actualBESTequivelant)
 
-library(sjPlot)
-library(sjlabelled)
-library(sjmisc)
-library(ggplot2)
+
 plot_model(modsBINOMIAL$actualBESTequivelant, show.values = TRUE, value.offset = .4)
 plot_model(modsBINOMIAL$actualBESTequivelant, type = "pred")
 
@@ -217,16 +205,13 @@ str(ranef(modsBINOMIAL$actualBESTequivelant))
 hist(rand$condval)
 overdisp <- deviance(modsBINOMIAL$actualBESTequivelant)/df.residual(modsBINOMIAL$actualBESTequivelant)
 
-
 plot(modsBINOMIAL$max)
 
 plot(residuals(modsBINOMIAL$max))
 ##plot(residuals(modsBINOMIAL$mod21))
 
-
 qqnorm(residuals(modsBINOMIAL$max))
 qqline((residuals(modsBINOMIAL$max)), col = "steelblue", lwd = 2)
-
 
 qplot((residuals(modsBINOMIAL$max)),
       geom = "histogram",
@@ -234,7 +219,6 @@ qplot((residuals(modsBINOMIAL$max)),
   labs(title = "Histogram of residuals",
        x = "residual")
 ?qplot
-
 
 hist(residuals(modsBINOMIAL$max))
 max(residuals(modsBINOMIAL$max))
@@ -252,9 +236,7 @@ vif(modsBINOMIAL$max)
 ########################################
 #########################################
 
-
 #######################
-
 modeldata_VOS_imp <- filter(modeldata_VOS, ObservableImpacts == 1)
 ##modeldata_VOS_imp$Site.Type <- relevel(modeldata_VOS_imp$Site.Type, ref = "Highly Managed")
 hist2 <- hist(modeldata_VOS_imp$Prop.Imp.HM)
@@ -274,7 +256,6 @@ sum_high_and_mod_simps
 ##library(nlme)
 ##library(Matrix)
 ##library(lme4)
-
 
 ############################
 
@@ -305,9 +286,6 @@ dredge(modsBinary$max, trace = 2)
 ##write.csv(dredge_binomial_severity,"C:\\Users\\AndrewT\\OneDrive - CAAS (Environmental Services) Ltd/Desktop\\AndyPhD\\PhD_Data_R\\dredge_binomial_severity.csv", row.names = FALSE)
 
 
-library(HDInterval)
-library(mcmcOutput)
-library(wiqid)
 
 #get.models(dredge(modsBinary$max), subset=TRUE)
 AICc <- sapply(modsBinary, AICc)
@@ -333,7 +311,6 @@ ggplot(modeldata_VOS_imp, aes(x=Site.Type, y=ImpSeverity)) +
 ggplot(modeldata_VOS_imp, aes(x=Year, y=ImpSeverity)) + 
   geom_boxplot()+
   geom_jitter(position=position_jitter(0.2))
-
 
 
 AICc(modsBinary$test)
@@ -366,8 +343,6 @@ plot(modeldata_VOS_imp$prop.Act.HM, modeldata_VOS_imp$Prop.Imp.HM)
 plot_model(modsBinary$best_withYear, type = "pred", terms = c("totalActivities", "totalimpacts", "prop.Act.HM"))
 
 ################### allFit code
-
-
 diff_optims <- allFit(model, maxfun = 1e5, parallel = 'multicore', ncpus = detectCores())
 is.OK <- sapply(diff_optims, is, "merMod")
 diff_optims.OK <- diff_optims[is.OK]

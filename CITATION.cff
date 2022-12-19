@@ -1,10 +1,15 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-  - family-names: Torsney, Buckley
-    given-names: Andrew, Yvonne M.
+  - family-names: Torsney
+    given-names: Andrew
     orcid: https://orcid.org/0000-0002-7824-7105
+  - family-names: Buckley
+    given-names: Yvonne
+    orcid: https://orcid.org/0000-0001-7599-3201
 title: "Data and code to support - Visitor demographics, site-type and activities determine the occurrence and severity of environmental impacts at nature-based tourist destinations. "
 version: 2022.07.2
 doi: 10.5281/zenodo.7457424
 date-released: 2022-12-19
+url: https://github.com/TorsneyStat/Predictors-of-impact-occurrence-and-severity-of-impacts/releases/tag/tourismmanagement
+
